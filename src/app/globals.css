@@ -1,26 +1,100 @@
+
+@import "allotment/dist/style.css";
+
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-brand-300: #a5b4fc;
+  --color-brand-500: #6175f2;
+  --color-brand-600: #4e5ed9;
+  --color-brand-900: #1e1b4b;
+  
+  --color-surface-50: #18181f;
+  --color-surface-100: #1e1e27;
+  --color-surface-200: #27272f;
+  --color-surface-300: #32323c;
+  
+  --font-display: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #0f0f13;
+    --surface-1: #18181f;
+    --surface-2: #1e1e27;
+    --surface-3: #27272f;
+    --border: #32323c;
+    --brand: #6175f2;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { 
+    background-color: var(--bg); 
+    color: #e2e8f0; 
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--surface-1); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4a4a58; }
+}
+
+@utility btn {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
+         transition-all duration-150 cursor-pointer select-none disabled:opacity-50
+         disabled:cursor-not-allowed;
+}
+
+@utility card {
+  @apply bg-surface-50 border border-surface-300 rounded-xl;
+}
+
+@layer components {
+  .btn-primary {
+    @apply btn bg-brand-600 hover:bg-brand-500 text-white
+           shadow-lg shadow-brand-900/20 active:scale-95;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-surface-100 text-slate-300 hover:text-white;
+  }
+  .btn-danger {
+    @apply btn bg-red-900/30 hover:bg-red-900/50 text-red-400
+           border border-red-800/40;
+  }
+  .btn-sm { @apply btn text-xs px-3 py-1.5; }
+
+  .card-hover {
+    @apply card hover:border-brand-500/40 transition-all cursor-pointer;
+  }
+
+  .input {
+    @apply w-full bg-surface-100 border border-surface-300 rounded-lg px-3 py-2
+           text-sm text-slate-100 placeholder:text-slate-500
+           focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30
+           transition-colors disabled:opacity-50;
+  }
+
+  /* REFACTORED PROSE-CQ:
+     Tailwind v4 struggles with @apply prose-code:text-brand-300.
+     Instead, we use standard CSS nesting which is supported natively.
+  */
+  .prose-cq {
+    @apply prose prose-invert prose-sm max-w-none;
+    
+    & h1, & h2, & h3, & h4 { @apply font-display text-slate-100; }
+    & p, & li { @apply text-slate-300; }
+    & strong { @apply text-slate-200; }
+    
+    /* Target code blocks specifically */
+    & code {
+      @apply text-brand-300 bg-surface-200 px-1.5 py-0.5 rounded text-xs;
+      &::before, &::after { content: none !important; }
+    }
+    
+    & pre { @apply bg-surface-100 border border-surface-300; }
+    & blockquote { @apply border-l-4 border-brand-500/40 text-slate-400; }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
