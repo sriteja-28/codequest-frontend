@@ -196,6 +196,7 @@ export function useRegisterContest() {
   });
 }
 
+
 // ─── DISCUSSIONS ───────────────────────────────────────────────────────────
 
 export function useThreads(problemSlug: string) {
@@ -217,10 +218,20 @@ export function useComments(threadId: number) {
 export function usePostComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ threadId, body_md, parent }: { threadId: number; body_md: string; parent?: number }) =>
-      discussApi.createComment(threadId, body_md, parent),
+    mutationFn: ({ 
+      threadId, 
+      body_md, 
+      parent,
+      isAnonymous = false 
+    }: { 
+      threadId: number; 
+      body_md: string; 
+      parent?: number;
+      isAnonymous?: boolean;
+    }) => discussApi.createComment(threadId, body_md, parent, isAnonymous),
     onSuccess: (_, { threadId }) => {
       qc.invalidateQueries({ queryKey: ["comments", threadId] });
+      qc.invalidateQueries({ queryKey: ["thread", threadId] });
     },
   });
 }
@@ -228,14 +239,59 @@ export function usePostComment() {
 export function useCreateThread() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ problemSlug, title }: { problemSlug: string; title: string }) =>
-      discussApi.createThread(problemSlug, title),
+    mutationFn: ({ 
+      problemSlug, 
+      title, 
+      content,
+      isAnonymous = false
+    }: { 
+      problemSlug: string; 
+      title: string;
+      content: string;
+      isAnonymous?: boolean;
+    }) => discussApi.createThread(problemSlug, title, content, isAnonymous),
     onSuccess: (_, { problemSlug }) => {
       qc.invalidateQueries({ queryKey: ["threads", problemSlug] });
     },
   });
 }
 
+// ✅ NEW: Hook for upvoting threads
+export function useUpvoteThread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: number) => discussApi.upvoteThread(threadId),
+    onSuccess: (_, threadId) => {
+      qc.invalidateQueries({ queryKey: ["thread", threadId] });
+      qc.invalidateQueries({ queryKey: ["threads"] });
+      qc.invalidateQueries({ queryKey: ["discussions-all"] });
+    },
+  });
+}
+
+// ✅ NEW: Hook for upvoting comments
+export function useUpvoteComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (commentId: number) => discussApi.upvoteComment(commentId),
+    onSuccess: (_, commentId) => {
+      qc.invalidateQueries({ queryKey: ["comments"] });
+      qc.invalidateQueries({ queryKey: ["thread"] });
+    },
+  });
+}
+
+// ✅ NEW: Hook for accepting answers
+export function useAcceptAnswer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (commentId: number) => discussApi.acceptAnswer(commentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["comments"] });
+      qc.invalidateQueries({ queryKey: ["thread"] });
+    },
+  });
+}
 // ─── ADS / LAYOUT ──────────────────────────────────────────────────────────
 
 export function usePlacements(route: string) {
@@ -335,3 +391,18 @@ export function useModerateComment() {
   });
 }
 
+
+
+
+// ─── AUTH HELPER ───
+
+export function useAuth() {
+  const user = useAuthStore((s) => s.user);
+  const { data: meData, isLoading } = useMe();
+  
+  return {
+    user: user || meData || null,
+    isAuthenticated: !!user || !!meData,
+    isLoading,
+  };
+}

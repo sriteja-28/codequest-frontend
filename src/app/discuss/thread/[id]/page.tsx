@@ -1,104 +1,172 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { discussApi } from "@/lib/api";
+import { useAuth } from "@/lib/hooks";
 import { timeAgo } from "@/lib/utils";
-import { MessageSquare, ThumbsUp, Eye, Reply } from "lucide-react";
-import type { DiscussionAuthor, Comment } from "@/types";
+import { MessageSquare, Eye, Pin, Lock, ThumbsUp, TrendingUp } from "lucide-react";
+import Link from "next/link";
+import type { Thread } from "@/types";
 
-export default function DiscussionDetailPage({ params }: { params: { id: string } }) {
-  const { data: discussion, isLoading } = useQuery({
-    queryKey: ["discussion", params.id],
-    queryFn: () => api.discussions.get(params.id),
+export default function DiscussionsPage() {
+  const { user } = useAuth();
+  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["discussions-all", sortBy],
+    queryFn: () => discussApi.listAll(),
   });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-400">Loading discussion...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
+        <div className="text-slate-400">Loading discussions...</div>
       </div>
     );
   }
 
-  if (!discussion) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-100 mb-2">Discussion Not Found</h1>
-          <p className="text-slate-400">The discussion you're looking for doesn't exist.</p>
-        </div>
-      </div>
-    );
-  }
+  // Sort threads
+  const sortedThreads = data?.results ? [...data.results].sort((a, b) => {
+    if (sortBy === 'popular') {
+      return (b.upvote_count || 0) - (a.upvote_count || 0);
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  }) : [];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Discussion Header */}
-      <div className="bg-surface-2 rounded-lg border border-surface-3 p-6 mb-8">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-slate-100 mb-2">{discussion.title}</h1>
-            <div className="flex items-center gap-4 text-sm text-slate-400">
-              <span>by {discussion.author.display_name}</span>
-              <span>{timeAgo(discussion.created_at)}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-slate-500">
-            <div className="flex items-center gap-1">
-              <Eye className="w-4 h-4" />
-              {discussion.view_count}
-            </div>
-            <div className="flex items-center gap-1">
-              <ThumbsUp className="w-4 h-4" />
-              {discussion.upvote_count}
-            </div>
-            <div className="flex items-center gap-1">
-              <MessageSquare className="w-4 h-4" />
-              {discussion.reply_count}
-            </div>
-          </div>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-100">Discussions</h1>
+          <p className="text-slate-400 mt-1">
+            {user ? 'Ask questions and share solutions' : 'Login to participate in discussions'}
+          </p>
         </div>
-        <div className="prose prose-invert max-w-none">
-          <div dangerouslySetInnerHTML={{ __html: discussion.content }} />
+
+        {/* Sort */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSortBy('recent')}
+            className={`px-3 py-1.5 rounded text-sm transition-colors ${
+              sortBy === 'recent'
+                ? 'bg-blue-600 text-white'
+                : 'bg-[#1a1a1a] text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Recent
+          </button>
+          <button
+            onClick={() => setSortBy('popular')}
+            className={`px-3 py-1.5 rounded text-sm transition-colors ${
+              sortBy === 'popular'
+                ? 'bg-blue-600 text-white'
+                : 'bg-[#1a1a1a] text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Popular
+          </button>
         </div>
       </div>
 
-      {/* Comments/Replies */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-slate-100">Replies</h2>
+      {/* Auth notice */}
+      {!user && (
+        <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <p className="text-sm text-blue-400">
+            <Link href="/auth/login" className="underline font-medium">
+              Login
+            </Link>{' '}
+            to create threads, comment, and upvote discussions.
+          </p>
+        </div>
+      )}
 
-        {discussion.comments && discussion.comments.length > 0 ? (
-          discussion.comments.map((comment: Comment) => (
-            <div key={comment.id} className="bg-surface-2 rounded-lg border border-surface-3 p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-sm font-medium text-white">
-                  {comment.author.display_name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-medium text-slate-100">{comment.author.display_name}</span>
-                    <span className="text-sm text-slate-400">{timeAgo(comment.created_at)}</span>
-                  </div>
-                  <div className="text-slate-300">
-                    {comment.content}
-                  </div>
-                  <div className="flex items-center gap-4 mt-3">
-                    <button className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-300">
-                      <ThumbsUp className="w-4 h-4" />
-                      {comment.upvote_count}
-                    </button>
-                    <button className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-300">
-                      <Reply className="w-4 h-4" />
-                      Reply
-                    </button>
-                  </div>
-                </div>
+      {/* Thread list */}
+      <div className="space-y-4">
+        {sortedThreads.map((thread: Thread) => (
+          <Link
+            key={thread.id}
+            href={`/discussions/thread/${thread.id}`}
+            className="block p-6 bg-[#141414] rounded-lg border border-[#1e1e1e] 
+                       hover:border-blue-500/50 transition-colors"
+          >
+            {/* Badges */}
+            {(thread.is_pinned || thread.is_locked) && (
+              <div className="flex items-center gap-2 mb-2">
+                {thread.is_pinned && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 
+                                   text-blue-400 rounded text-xs font-medium">
+                    <Pin className="w-3 h-3" /> Pinned
+                  </span>
+                )}
+                {thread.is_locked && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-slate-500/10 
+                                   text-slate-500 rounded text-xs font-medium">
+                    <Lock className="w-3 h-3" /> Locked
+                  </span>
+                )}
               </div>
+            )}
+
+            {/* Title */}
+            <h2 className="text-xl font-semibold text-slate-100 hover:text-blue-400 
+                           mb-2 transition-colors">
+              {thread.title}
+            </h2>
+
+            {/* Content preview */}
+            <p className="text-slate-400 mb-3 line-clamp-2">
+              {thread.content}
+            </p>
+
+            {/* Metadata */}
+            <div className="flex items-center gap-4 text-sm text-slate-500">
+              {/* Author */}
+              <span className="flex items-center gap-1.5">
+                by {thread.created_by.display_name}
+                {thread.created_by.plan === 'PRO' && (
+                  <span className="px-1 py-0.5 bg-blue-600 text-white text-xs rounded">
+                    PRO
+                  </span>
+                )}
+              </span>
+              
+              {/* Problem link */}
+              <Link 
+                href={`/problems/${thread.problem_slug}`}
+                className="text-blue-400 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {thread.problem_slug}
+              </Link>
+
+              {/* Stats */}
+              <div className="flex items-center gap-1">
+                <ThumbsUp className="w-4 h-4" />
+                {thread.upvote_count}
+              </div>
+
+              <div className="flex items-center gap-1">
+                <MessageSquare className="w-4 h-4" />
+                {thread.comment_count}
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Eye className="w-4 h-4" />
+                {thread.views}
+              </div>
+              
+              <span>{timeAgo(thread.created_at)}</span>
             </div>
-          ))
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-slate-400">No replies yet. Be the first to comment!</p>
+          </Link>
+        ))}
+
+        {sortedThreads.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-slate-400">
+              No discussions yet. {user ? 'Start a conversation!' : 'Login to start a conversation!'}
+            </p>
           </div>
         )}
       </div>

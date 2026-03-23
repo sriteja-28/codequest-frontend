@@ -98,3 +98,43 @@
   }
 }
 
+
+
+/* Add these utilities to your globals.css for navbar-aware layouts */
+
+/* Set navbar height as a CSS custom property for reuse */
+:root {
+  --navbar-height: 4rem; /* 64px - adjust to match your Navbar component height */
+}
+
+/* Utility class for full height minus navbar */
+.h-screen-minus-nav {
+  height: calc(100vh - var(--navbar-height));
+}
+
+.min-h-screen-minus-nav {
+  min-height: calc(100vh - var(--navbar-height));
+}
+
+/* For pages that need to be full viewport height without navbar */
+.h-viewport-content {
+  height: 100%;
+  max-height: calc(100vh - var(--navbar-height));
+}
+
+/* Ensure main content area is properly sized */
+main.page-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* For problem detail pages specifically */
+.problem-page-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

@@ -4,9 +4,9 @@ import "./globals.css";
 import { Providers } from "./providers";
 import Navbar from "@/components/ui/Navbar";
 
-const inter    = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
-const syne      = Syne({ subsets: ["latin"], variable: "--font-syne" });
+const syne = Syne({ subsets: ["latin"], variable: "--font-syne" });
 
 export const metadata: Metadata = {
   title: { default: "CodeQuest", template: "%s | CodeQuest" },
@@ -18,8 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body className={`${inter.variable} ${jetbrains.variable} ${syne.variable} font-sans bg-surface text-slate-100 antialiased`}>
         <Providers>
-          <div className="relative min-h-screen flex flex-col">
+          {/* Changed to h-screen to ensure full viewport height */}
+          <div className="h-screen flex flex-col">
             <Navbar />
+            {/* Main uses flex-1 to fill remaining space after navbar */}
             <main className="flex-1">
               {children}
             </main>

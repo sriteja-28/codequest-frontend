@@ -172,25 +172,78 @@ export const contestsApi = {
       .then((r) => r.data.results),
 };
 
-// ─── Discussions ───────────────────────────────────────────────────────────
+
+// ─── Discussions API ───────────────────────────────────────────────────────
 
 export const discussApi = {
-  threads: (problemSlug: string) =>
-    axiosClient.get<PaginatedResponse<Thread>>(`/discuss/problems/${problemSlug}/threads/`)
-      .then((r) => r.data.results),
-
-  createThread: (problemSlug: string, title: string) =>
-    axiosClient.post<Thread>(`/discuss/problems/${problemSlug}/threads/`, { title }).then((r) => r.data),
-
-  comments: (threadId: number) =>
-    axiosClient.get<PaginatedResponse<Comment>>(`/discuss/threads/${threadId}/comments/`)
-      .then((r) => r.data.results),
-
-  createComment: (threadId: number, body_md: string, parent?: number) =>
+  // List all threads globally (public)
+  listAll: (page?: number) =>
     axiosClient
-      .post<Comment>(`/discuss/threads/${threadId}/comments/`, {
-        body_md, ...(parent != null ? { parent } : {}),
+      .get<PaginatedResponse<Thread>>("/discuss/threads/", { 
+        params: { page } 
       })
+      .then((r) => r.data),
+
+  // Get single thread with comments (public)
+  getThread: (threadId: number) =>
+    axiosClient
+      .get<Thread>(`/discuss/threads/${threadId}/`)
+      .then((r) => r.data),
+
+  // Get threads for specific problem (public)
+  threads: (problemSlug: string) =>
+    axiosClient
+      .get<PaginatedResponse<Thread>>(`/discuss/problems/${problemSlug}/threads/`)
+      .then((r) => r.data.results),
+
+  // Create new thread (requires auth)
+  createThread: (problemSlug: string, title: string, content: string, isAnonymous = false) =>
+    axiosClient
+      .post<Thread>(`/discuss/problems/${problemSlug}/threads/create/`, { 
+        title, 
+        content,
+        is_anonymous: isAnonymous
+      })
+      .then((r) => r.data),
+
+  // Get comments for thread (public)
+  comments: (threadId: number) =>
+    axiosClient
+      .get<PaginatedResponse<Comment>>(`/discuss/threads/${threadId}/comments/`)
+      .then((r) => r.data.results),
+
+  // Create comment (requires auth)
+  createComment: (threadId: number, body_md: string, parent?: number, isAnonymous = false) =>
+    axiosClient
+      .post<Comment>(`/discuss/threads/${threadId}/comments/create/`, {
+        body_md,
+        ...(parent != null ? { parent } : {}),
+        is_anonymous: isAnonymous
+      })
+      .then((r) => r.data),
+
+  // Upvote thread (requires auth, toggles upvote)
+  upvoteThread: (threadId: number) =>
+    axiosClient
+      .post<{ action: 'added' | 'removed'; upvote_count: number; has_upvoted: boolean }>(
+        `/discuss/threads/${threadId}/upvote/`
+      )
+      .then((r) => r.data),
+
+  // Upvote comment (requires auth, toggles upvote)
+  upvoteComment: (commentId: number) =>
+    axiosClient
+      .post<{ action: 'added' | 'removed'; upvotes: number; has_upvoted: boolean }>(
+        `/discuss/comments/${commentId}/upvote/`
+      )
+      .then((r) => r.data),
+
+  // Mark comment as accepted answer (thread author or admin only)
+  acceptAnswer: (commentId: number) =>
+    axiosClient
+      .post<{ is_accepted_answer: boolean }>(
+        `/discuss/comments/${commentId}/accept/`
+      )
       .then((r) => r.data),
 };
 

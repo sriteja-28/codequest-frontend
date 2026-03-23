@@ -90,6 +90,7 @@ export interface Problem {
   time_complexity_worst?: string;
   space_complexity?: string;
   complexity_notes_md?: string;
+  solutions?: Solution[];
 }
 
 // ─── Submissions ───────────────────────────────────────────────────────────
@@ -169,6 +170,7 @@ export interface LeaderboardEntry {
 
 // ─── Discussions ───────────────────────────────────────────────────────────
 
+
 export interface DiscussionAuthor {
   id: number;
   username: string;
@@ -179,12 +181,15 @@ export interface DiscussionAuthor {
 
 export interface Comment {
   id: number;
+  thread: number;
   parent: number | null;
   body_md: string;
   created_by: DiscussionAuthor;
   created_at: string;
   updated_at: string;
   upvotes: number;
+  has_upvoted: boolean;  // Has current user upvoted this comment
+  is_accepted_answer: boolean;
   is_flagged: boolean;
   is_hidden: boolean;
   replies: Comment[];
@@ -195,12 +200,17 @@ export interface Thread {
   id: number;
   problem_slug: string;
   title: string;
+  content: string;
   created_by: DiscussionAuthor;
   created_at: string;
+  updated_at: string;
   is_pinned: boolean;
   is_locked: boolean;
   views: number;
   comment_count: number;
+  upvote_count: number;
+  has_upvoted: boolean;  // Has current user upvoted this thread
+  comments?: Comment[];  // Only present in detail view
 }
 
 // ─── Ads ───────────────────────────────────────────────────────────────────
