@@ -1,36 +1,163 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CodeQuest — Frontend
 
-## Getting Started
+## Overview
 
-First, run the development server:
+This is the frontend for CodeQuest.
+
+You use it to:
+
+* browse problems
+* write and submit code
+* view results in real time
+* track progress
+
+Built with Next.js.
+
+---
+
+## Related Repositories
+
+CodeQuest uses a multi-repo architecture.
+
+### Backend API
+
+Handles:
+
+* authentication
+* problems
+* submissions
+* users
+
+👉 [https://github.com/your-username/codequest-backend](https://github.com/your-username/codequest-backend)
+
+---
+
+### Judge Service
+
+Handles:
+
+* code execution
+* sandboxing with Docker
+* test case evaluation
+
+👉 [https://github.com/your-username/codequest-judge](https://github.com/your-username/codequest-judge)
+
+---
+
+### Infrastructure (IMPORTANT)
+
+Handles core services:
+
+* PostgreSQL
+* Redis
+* RabbitMQ
+
+👉 [https://github.com/your-username/codequest-infra](https://github.com/your-username/codequest-infra)
+
+You must start this before running backend or judge.
+
+---
+
+### Documentation
+
+Full system design and setup:
+
+👉 [https://github.com/your-username/codequest-docs](https://github.com/your-username/codequest-docs)
+
+---
+
+## Architecture (High Level)
+
+frontend → backend → rabbitmq → judge → backend → frontend
+
+redis handles real-time updates via websockets
+
+---
+
+## Prerequisites
+
+* Node.js 20+
+* backend running
+* infra running (redis + rabbitmq + postgres)
+
+---
+
+## Setup
 
 ```bash
+npm install
+cp .env.local.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment Variables
 
-## Learn More
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Required Services
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+start infra first:
 
-## Deploy on Vercel
+```bash
+cd infra
+docker compose up -d
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+this starts:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* postgres
+* redis
+* rabbitmq
+
+---
+
+## Development Flow
+
+* open problem
+* write code
+* click submit
+* request goes to backend
+* backend pushes job to rabbitmq
+* judge picks job and runs code
+* result sent back via websocket (redis)
+
+---
+
+## Features
+
+* problem list
+* code editor
+* real-time submission status
+* multi-language support
+* contest UI
+
+---
+
+## Future Work
+
+* AI hints UI
+* discussion system
+* performance analytics
+
+---
+
+## Notes
+
+* backend must be running on port 8000
+* infra must be running before submissions work
+* judge must be active for execution
+
+---
+
+## License
+
+MIT
