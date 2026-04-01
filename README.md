@@ -4,7 +4,7 @@
 
 This is the frontend for CodeQuest.
 
-You use it to:
+we use it to:
 
 * browse problems
 * write and submit code
@@ -28,7 +28,7 @@ Handles:
 * submissions
 * users
 
-👉 [https://github.com/your-username/codequest-backend](https://github.com/your-username/codequest-backend)
+👉 [https://github.com/sriteja-28/codequest-backend.git](https://github.com/sriteja-28/codequest-backend.git)
 
 ---
 
@@ -40,7 +40,7 @@ Handles:
 * sandboxing with Docker
 * test case evaluation
 
-👉 [https://github.com/your-username/codequest-judge](https://github.com/your-username/codequest-judge)
+👉 [https://github.com/sriteja-28/codequest-judge.git](https://github.com/sriteja-28/codequest-judge.git)
 
 ---
 
@@ -52,7 +52,7 @@ Handles core services:
 * Redis
 * RabbitMQ
 
-👉 [https://github.com/your-username/codequest-infra](https://github.com/your-username/codequest-infra)
+👉 [https://github.com/sriteja-28/codequest-infra.git](https://github.com/sriteja-28/codequest-infra.git)
 
 You must start this before running backend or judge.
 
@@ -62,7 +62,7 @@ You must start this before running backend or judge.
 
 Full system design and setup:
 
-👉 [https://github.com/your-username/codequest-docs](https://github.com/your-username/codequest-docs)
+👉 [https://github.com/sriteja-28/codequest-docs.git](https://github.com/sriteja-28/codequest-docs.git)
 
 ---
 
