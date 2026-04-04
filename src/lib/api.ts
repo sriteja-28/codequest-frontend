@@ -153,6 +153,12 @@ export const submissionsApi = {
     axiosClient
       .get<PaginatedResponse<Submission>>("/submissions/history/", { params: problemSlug ? { problem_slug: problemSlug } : {} })
       .then((r) => r.data.results),
+
+  // new endpoint for "Run Code" / sample test run
+  run: (payload: SubmitPayload) =>
+    axiosClient
+      .post<{ submission_id: string; status: string }>("/submissions/run-code/", payload)
+      .then((r) => r.data),
 };
 
 // ─── Contests ──────────────────────────────────────────────────────────────
@@ -182,7 +188,7 @@ export const discussApi = {
       .get<PaginatedResponse<Thread>>("/discuss/threads/", { 
         params: { page } 
       })
-      .then((r) => r.data),
+      .then((r) => r.data.results),
 
   // Get single thread with comments (public)
   getThread: (threadId: number) =>

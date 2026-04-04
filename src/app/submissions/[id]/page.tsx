@@ -1,165 +1,209 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { statusColor, formatRuntime, formatMemory, timeAgo } from "@/lib/utils";
-import { CheckCircle, XCircle, Clock, HardDrive, Code } from "lucide-react";
-import type { Submission } from "@/types";
+import { submissionsApi } from "@/lib/api";
+import { statusColor, statusLabel, formatRuntime, formatMemory, timeAgo } from "@/lib/utils";
+import { CheckCircle, XCircle, Clock, HardDrive, Code, ChevronLeft } from "lucide-react";
 
-export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
-  const [activeTab, setActiveTab] = useState<"code" | "results">("results");
+export default function SubmissionDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const [activeTab, setActiveTab] = useState<"results" | "code">("results");
 
-  const { data: submission, isLoading } = useQuery({
-    queryKey: ["submission", params.id],
-    queryFn: () => api.submissions.get(params.id),
+  const { data: submission, isLoading, isError } = useQuery({
+    queryKey: ["submission", id],
+    queryFn: () => submissionsApi.get(id),
+    enabled: !!id,
   });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-400">Loading submission...</div>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (!submission) {
+  if (isError || !submission) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-100 mb-2">Submission Not Found</h1>
-          <p className="text-slate-400">The submission you're looking for doesn't exist.</p>
-        </div>
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center gap-3 text-slate-400">
+        <p className="text-lg font-semibold text-slate-200">Submission Not Found</p>
+        <p className="text-sm text-slate-600">The submission you're looking for doesn't exist.</p>
+        <a href="/problems" className="text-blue-400 text-sm hover:underline mt-2">
+          ← Back to Problems
+        </a>
       </div>
     );
   }
+
+  const passedCount = submission.results?.filter(r => r.status === "ACCEPTED").length ?? 0;
+  const totalCount  = submission.results?.length ?? 0;
+  const isAccepted  = submission.status === "ACCEPTED";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          {submission.status === "ACCEPTED" ? (
-            <CheckCircle className="w-8 h-8 text-green-400" />
-          ) : (
-            <XCircle className="w-8 h-8 text-red-400" />
-          )}
-          <div>
-            <h1 className="text-2xl font-bold text-slate-100">{submission.problem.title}</h1>
-            <p className="text-slate-400">Submission #{submission.id}</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0a] text-slate-300">
+      <div className="max-w-4xl mx-auto px-6 py-8">
 
-        <div className="flex items-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <span className={`font-medium ${statusColor(submission.status)}`}>
-              {submission.status}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-slate-400">
-            <Code className="w-4 h-4" />
-            {submission.language}
-          </div>
-          <div className="flex items-center gap-1 text-slate-400">
-            <Clock className="w-4 h-4" />
-            {formatRuntime(submission.runtime_ms)}
-          </div>
-          <div className="flex items-center gap-1 text-slate-400">
-            <HardDrive className="w-4 h-4" />
-            {formatMemory(submission.memory_kb)}
-          </div>
-          <span className="text-slate-400">{timeAgo(submission.created_at)}</span>
-        </div>
-      </div>
+        {/* Back */}
+         <a
+          href={`/problems/${submission.problem_slug}`}
+          className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-300 text-sm mb-6 transition-colors" >
+          <ChevronLeft className="w-4 h-4" />
+          {submission.problem_title}
+        </a>
 
-      <div className="bg-surface-2 rounded-lg border border-surface-3">
-        <div className="border-b border-surface-3">
-          <div className="flex">
-            <button
-              onClick={() => setActiveTab("results")}
-              className={`px-6 py-3 font-medium text-sm transition-colors ${
-                activeTab === "results"
-                  ? "text-brand-400 border-b-2 border-brand-400"
-                  : "text-slate-400 hover:text-slate-300"
-              }`}
-            >
-              Test Results
-            </button>
-            <button
-              onClick={() => setActiveTab("code")}
-              className={`px-6 py-3 font-medium text-sm transition-colors ${
-                activeTab === "code"
-                  ? "text-brand-400 border-b-2 border-brand-400"
-                  : "text-slate-400 hover:text-slate-300"
-              }`}
-            >
-              Code
-            </button>
+        {/* Status card */}
+        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-6 mb-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              {isAccepted
+                ? <CheckCircle className="w-7 h-7 text-green-400 shrink-0" />
+                : <XCircle    className="w-7 h-7 text-red-400 shrink-0" />
+              }
+              <div>
+                <div className={`text-xl font-bold ${statusColor(submission.status)}`}>
+                  {statusLabel(submission.status)}
+                </div>
+                <div className="text-slate-500 text-xs uppercase tracking-wide mt-0.5">
+                  {submission.language} · {timeAgo(submission.created_at)}
+                </div>
+              </div>
+            </div>
+
+            {totalCount > 0 && (
+              <div className="text-right">
+                <div className="text-lg font-semibold text-slate-200">
+                  {passedCount} / {totalCount}
+                </div>
+                <div className="text-xs text-slate-600">test cases passed</div>
+              </div>
+            )}
           </div>
-        </div>
 
-        <div className="p-6">
-          {activeTab === "results" ? (
-            <div className="space-y-4">
-              {submission.test_results && submission.test_results.length > 0 ? (
-                submission.test_results.map((result, index) => (
-                  <div key={index} className="p-4 bg-surface-3 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium text-slate-100">Test Case {index + 1}</h3>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        result.passed ? "text-green-400 bg-green-900/20" : "text-red-400 bg-red-900/20"
-                      }`}>
-                        {result.passed ? "PASSED" : "FAILED"}
-                      </span>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <div className="text-slate-400 mb-1">Input</div>
-                        <pre className="text-slate-300 bg-surface-1 p-2 rounded text-xs overflow-x-auto">
-                          {result.input}
-                        </pre>
-                      </div>
-                      <div>
-                        <div className="text-slate-400 mb-1">Expected Output</div>
-                        <pre className="text-slate-300 bg-surface-1 p-2 rounded text-xs overflow-x-auto">
-                          {result.expected_output}
-                        </pre>
-                      </div>
-                    </div>
-
-                    {!result.passed && result.actual_output && (
-                      <div className="mt-4">
-                        <div className="text-slate-400 mb-1">Your Output</div>
-                        <pre className="text-red-300 bg-surface-1 p-2 rounded text-xs overflow-x-auto">
-                          {result.actual_output}
-                        </pre>
-                      </div>
-                    )}
-
-                    {result.error_message && (
-                      <div className="mt-4">
-                        <div className="text-slate-400 mb-1">Error</div>
-                        <pre className="text-red-300 bg-surface-1 p-2 rounded text-xs overflow-x-auto">
-                          {result.error_message}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-slate-400">No test results available.</p>
+          {/* Runtime + Memory */}
+          {(submission.runtime_ms != null || submission.memory_kb != null) && (
+            <div className="flex gap-6 mt-4 pt-4 border-t border-[#1e1e1e]">
+              {submission.runtime_ms != null && (
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <Clock className="w-4 h-4 text-slate-600" />
+                  {formatRuntime(submission.runtime_ms)}
+                </div>
+              )}
+              {submission.memory_kb != null && (
+                <div className="flex items-center gap-2 text-sm text-slate-400">
+                  <HardDrive className="w-4 h-4 text-slate-600" />
+                  {formatMemory(submission.memory_kb)}
                 </div>
               )}
             </div>
-          ) : (
-            <div>
-              <pre className="text-slate-300 bg-surface-1 p-4 rounded text-sm overflow-x-auto">
-                <code>{submission.code}</code>
+          )}
+
+          {/* Compile / runtime error */}
+          {submission.error_message && (
+            <div className="mt-4 p-3 bg-red-950/20 border border-red-900/30 rounded-lg">
+              <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap">
+                {submission.error_message}
               </pre>
             </div>
           )}
         </div>
+
+        {/* Tabs */}
+        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="flex border-b border-[#1e1e1e]">
+            {(["results", "code"] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 text-sm font-semibold capitalize transition-colors border-b-2 ${
+                  activeTab === tab
+                    ? "text-white border-blue-500"
+                    : "text-slate-500 border-transparent hover:text-slate-300"
+                }`}
+              >
+                {tab === "results" ? "Test Results" : "Code"}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-5">
+            {/* ── Results tab ── */}
+            {activeTab === "results" && (
+              <div className="space-y-2">
+                {totalCount === 0 ? (
+                  <p className="text-slate-500 text-sm text-center py-8">
+                    No test results available.
+                  </p>
+                ) : (
+                  submission.results.map((r, i) => (
+                    <div
+                      key={r.id}
+                      className={`p-3 rounded-lg border text-sm ${
+                        r.status === "ACCEPTED"
+                          ? "bg-green-950/10 border-green-900/30"
+                          : "bg-red-950/10 border-red-900/30"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono text-xs text-slate-500">
+                          Case {i + 1}{r.is_hidden ? " · hidden" : ""}
+                        </span>
+                        <span className={`text-xs font-semibold ${
+                          r.status === "ACCEPTED" ? "text-green-400" : "text-red-400"
+                        }`}>
+                          {r.status.replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {/* Only show I/O for visible test cases */}
+                      {!r.is_hidden && (
+                        <div className="mt-2 space-y-1 font-mono text-xs text-slate-400">
+                          {r.actual_output && (
+                            <p>
+                              Output:{" "}
+                              <span className="text-slate-300">{r.actual_output}</span>
+                            </p>
+                          )}
+                          {r.status !== "ACCEPTED" && r.expected_output && (
+                            <p>
+                              Expected:{" "}
+                              <span className="text-slate-300">{r.expected_output}</span>
+                            </p>
+                          )}
+                          {r.error_output && (
+                            <pre className="text-red-400 whitespace-pre-wrap mt-1">
+                              {r.error_output}
+                            </pre>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* ── Code tab ── */}
+            {activeTab === "code" && (
+              <div className="flex items-center gap-2 mb-3 text-xs text-slate-500 uppercase tracking-wide">
+                <Code className="w-3.5 h-3.5" />
+                {submission.language}
+              </div>
+            )}
+            {activeTab === "code" && (
+              <div className="bg-[#1a1a1a] border border-[#252525] rounded-lg p-4 overflow-x-auto">
+                <pre className="text-sm text-slate-300 font-mono whitespace-pre">
+                  {submission.code}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

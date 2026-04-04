@@ -152,6 +152,12 @@ export function useSubmitCode() {
   });
 }
 
+export function useRunCode() {
+  return useMutation({
+    mutationFn: submissionsApi.run, 
+  });
+}
+
 export function useSubmissionHistory(problemSlug?: string) {
   return useQuery({
     queryKey: ["submissions", "history", problemSlug],

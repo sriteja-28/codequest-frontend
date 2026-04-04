@@ -15,7 +15,8 @@ import SubmissionsTab from "@/components/problems/SubmissionsTab";
 import DiscussionsTab from "@/components/problems/DiscussionsTab";
 import ConsolePanel from "@/components/problems/ConsolePanel";
 
-import { useProblem, useSubmitCode, useSubmission } from "@/lib/hooks";
+import { useProblem, useSubmitCode, useSubmission, useRunCode } from "@/lib/hooks";
+import { useQueryClient } from "@tanstack/react-query";
 import { submissionWS } from "@/lib/ws";
 import { cn } from "@/lib/utils";
 import type { Language, SubmissionStatus } from "@/types";
@@ -56,31 +57,112 @@ export default function ProblemDetailPage({
   // API hooks
   const { data: problem, isLoading } = useProblem(slug);
   const submitMutation = useSubmitCode();
+  const runMutation = useRunCode();
   const { data: submissionData } = useSubmission(submissionId ?? "", !!submissionId);
+  const queryClient = useQueryClient();
 
   // Load starter code when problem or language changes
-  useEffect(() => {
-    if (!problem) return;
-    const key = `starter_code_${language}` as keyof typeof problem;
-    const starter = (problem[key] as string | undefined) || `class Solution {\n    // Write your solution here\n}`;
-    setCode(starter);
-  }, [problem?.slug, language]); // eslint-disable-line react-hooks/exhaustive-deps
+  // useEffect(() => {
+  //   if (!problem) return;
+  //   const key = `starter_code_${language}` as keyof typeof problem;
+  //   const starter = (problem[key] as string | undefined) || `class Solution {\n    // Write your solution here\n}`;
+  //   setCode(starter);
+  // }, [problem?.slug, language]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+
+useEffect(() => {
+  if (!problem) return;
+
+  const starterCodeField = `starter_code_${language}` as keyof typeof problem;
+  let starterCode = problem[starterCodeField] as string | undefined;
+
+  if (!starterCode || starterCode.trim() === "") {
+    const fallbacks: Record<Language, string> = {
+      python: `def solution():\n    pass\n`,
+      cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n`,
+      java: `public class Solution {\n    public void solve() {}\n}\n`,
+      javascript: `function solution() {}\n`,
+    };
+    starterCode = fallbacks[language];
+  }
+
+  // ✅ Check localStorage FIRST, fall back to starter — one setCode call, right priority
+  const saved = localStorage.getItem(`code:${slug}:${language}`);
+  setCode(saved ?? starterCode);
+
+}, [slug, language, problem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After the starter-code useEffect, add:
+
+  // Restore saved code from localStorage (runs once per slug+language)
+  // useEffect(() => {
+  //   if (!problem) return;
+  //   const saved = localStorage.getItem(`code:${slug}:${language}`);
+  //   if (saved !== null) setCode(saved);
+  // }, [slug, language, problem?.id]); // same deps as starter-code effect
+
+  // Save code on every keystroke (debounced via useRef)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+useEffect(() => {
+  if (!problem) return;      // ← don't save until problem is loaded
+  if (!code) return;         // ← don't overwrite with empty string
+
+  clearTimeout(saveTimer.current);
+  saveTimer.current = setTimeout(() => {
+    localStorage.setItem(`code:${slug}:${language}`, code);
+  }, 500);
+  return () => clearTimeout(saveTimer.current);
+}, [code, slug, language, problem]);
+
+  // useEffect(() => {
+  //   if (problem) {
+  //     console.log("✅ Problem loaded:", {
+  //       slug: problem.slug,
+  //       python: !!problem.starter_code_python,
+  //       cpp: !!problem.starter_code_cpp,
+  //       java: !!problem.starter_code_java,
+  //       js: !!problem.starter_code_javascript,
+  //     });
+  //   }
+  // }, [problem]);
+
 
   // WebSocket for live submission status
+  // useEffect(() => {
+  //   if (!submissionId) return;
+  //   const ws = submissionWS(submissionId);
+  //   ws.connect();
+  //   const off = ws.on((msg) => {
+  //     if (msg.type === "status_update") {
+  //       setLiveStatus(msg.status as SubmissionStatus);
+  //     }
+  //   });
+  //   return () => {
+  //     off();
+  //     ws.close();
+  //   };
+  // }, [submissionId]);
+
+
+  // ✅ KEEP THIS, with history invalidation added
   useEffect(() => {
     if (!submissionId) return;
     const ws = submissionWS(submissionId);
     ws.connect();
     const off = ws.on((msg) => {
       if (msg.type === "status_update") {
-        setLiveStatus(msg.status as SubmissionStatus);
+        const status = msg.status as SubmissionStatus;
+        setLiveStatus(status);
+        const terminal = !["QUEUED", "RUNNING"].includes(status);
+        if (terminal) {
+          queryClient.invalidateQueries({ queryKey: ["submission", submissionId] });
+          queryClient.invalidateQueries({ queryKey: ["submissions", "history", slug] }); // ← add
+        }
       }
     });
-    return () => {
-      off();
-      ws.close();
-    };
-  }, [submissionId]);
+    return () => { off(); ws.close(); };
+  }, [submissionId, queryClient, slug]);
 
   // Fullscreen toggle
   useEffect(() => {
@@ -100,11 +182,40 @@ export default function ProblemDetailPage({
   };
 
   // Handlers
+ const handleRun = async () => {
+  setLiveStatus(null);
+  setConsoleOpen(true);
+  setConsoleTab("testcase");
+
+  // ← add this, same as handleSubmit
+  if (submissionId) {
+    queryClient.removeQueries({ queryKey: ["submission", submissionId] });
+  }
+  setSubmissionId(null);
+
+  try {
+    const res = await runMutation.mutateAsync({ problem_slug: slug, code, language });
+    if (res.submission_id) {
+      setSubmissionId(res.submission_id);
+      setLiveStatus("QUEUED");
+      setConsoleTab("result");
+    }
+  } catch (e) {
+    console.error("Run code failed:", e);
+  }
+};
+
   const handleSubmit = async () => {
     setConsoleTab("result");
     setConsoleOpen(true);
     setSubmissionId(null);
     setLiveStatus(null);
+
+    // clear previous submission from cache
+    if (submissionId) {
+      queryClient.removeQueries({ queryKey: ["submission", submissionId] });
+    }
+
     try {
       const res = await submitMutation.mutateAsync({
         problem_slug: slug,
@@ -136,12 +247,18 @@ export default function ProblemDetailPage({
     setConsoleOpen(true);
     setLeftTab("description");
     setConsoleTab("testcase");
-    
+
     // Force Allotment to reset by changing key
     setLayoutKey(prev => prev + 1);
   };
 
-  const currentStatus = liveStatus ?? submissionData?.status ?? null;
+  // const currentStatus = liveStatus ?? submissionData?.status ?? null;
+  const currentStatus = (() => {
+    // If we have real data from the server, always trust it
+    if (submissionData?.status) return submissionData.status;
+    // Otherwise show the live WS status (QUEUED/RUNNING)
+    return liveStatus;
+  })();
 
   // Loading state
   if (isLoading) {
@@ -229,7 +346,7 @@ export default function ProblemDetailPage({
               <div className="flex-1 overflow-y-auto">
                 {leftTab === "description" && <DescriptionTab problem={problem} />}
                 {leftTab === "solutions" && <SolutionsTab problem={problem} />}
-                {leftTab === "submissions" && <SubmissionsTab problemSlug={slug} />}
+                {leftTab === "submissions" && <SubmissionsTab problemSlug={slug} problem={problem}  />}
                 {leftTab === "discussions" && <DiscussionsTab problemSlug={slug} />}
               </div>
             </div>
@@ -298,7 +415,8 @@ export default function ProblemDetailPage({
                         onClose={() => setConsoleOpen(false)}
                         submissionData={submissionData}
                         currentStatus={currentStatus}
-                        isLoading={submitMutation.isPending}
+                        // isLoading={submitMutation.isPending}
+                        isLoading={submitMutation.isPending || runMutation.isPending}
                       />
                     </Allotment.Pane>
                   )}
@@ -341,8 +459,7 @@ export default function ProblemDetailPage({
 
                   <button
                     onClick={() => {
-                      setConsoleTab("testcase");
-                      setConsoleOpen(true);
+                      handleRun();
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#252525] hover:bg-[#2e2e2e] 
                                border border-[#333] text-slate-300 rounded text-xs font-semibold transition-colors"

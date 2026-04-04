@@ -153,7 +153,11 @@ export default function ConsolePanel({
                     <p className="text-[9px] text-slate-600 uppercase font-bold mb-2 tracking-wider">
                       Test Cases
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
+                    
+
+                    {/* //!Testing */}
+                    {/* Pill row */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
                       {submissionData.results.map((r, i) => (
                         <div
                           key={r.id}
@@ -163,18 +167,47 @@ export default function ConsolePanel({
                               ? "bg-green-500/10 text-green-400 border-green-500/20"
                               : "bg-red-500/10 text-red-400 border-red-500/20"
                           )}
-                          title={
-                            r.is_hidden
-                              ? `Hidden #${i + 1}`
-                              : `Test ${i + 1}: ${statusLabel(r.status)}`
-                          }
-                        >
-                          {r.is_hidden ? "?" : i + 1}
+                          title={r.is_hidden ? `Hidden #${i + 1}` : `Test ${i + 1}: ${statusLabel(r.status)}`}
+                        >{r.is_hidden ? "?" : i + 1}
                         </div>
                       ))}
                     </div>
+
+                    {/* Detail cards — only for failed visible cases */}
+                    {submissionData.results
+                      .filter((r) => r.status !== "ACCEPTED" && !r.is_hidden)
+                      .map((r, i) => (
+                        <div
+                          key={r.id}
+                          className="mb-3 bg-[#1e1e1e] border border-red-900/20 rounded-lg p-3 space-y-2"
+                        >
+                          <p className="text-[9px] text-red-400 uppercase font-bold tracking-wider">{statusLabel(r.status)} — Test {submissionData.results.indexOf(r) + 1}
+                          </p>
+                          {r.actual_output !== undefined && (
+                            <>
+                              <div>
+                                <p className="text-[9px] text-slate-600 mb-1">Expected</p>
+                                <pre className="text-green-300 text-[11px] leading-relaxed whitespace-pre-wrap">
+                                  {r.expected_output}
+                                </pre>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-slate-600 mb-1">Got</p><pre className="text-red-300 text-[11px] leading-relaxed whitespace-pre-wrap">
+                                  {r.actual_output}
+                                </pre>
+                              </div>
+                            </>
+                          )}
+                          {r.error_output && (
+                            <pre className="text-[11px] text-orange-300 whitespace-pre-wrap">
+                              {r.error_output}
+                            </pre>
+                          )}
+                        </div>))}
                   </div>
                 )}
+
+
 
                 {submissionData?.error_message && (
                   <pre className="text-[11px] text-red-300 bg-red-950/20 border border-red-900/20 
