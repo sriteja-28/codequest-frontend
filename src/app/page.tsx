@@ -35,9 +35,7 @@ export default function HomePage() {
             <div className="max-w-5xl mx-auto px-6 py-20 flex flex-col items-center text-center">
 
               <div
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full
-                 bg-blue-500/10 border border-blue-500/20
-                  text-blue-400 text-xs font-semibold mb-6">
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-6">
                 <Zap className="w-3 h-3" />
                 {user?.is_pro ? "Pro Member — All Features Unlocked" : "Free to start · No credit card"}
               </div>
@@ -59,18 +57,13 @@ export default function HomePage() {
 
               <div className="flex items-center gap-3 flex-wrap justify-center">
                 <Link href="/problems"
-                  className="inline-flex items-center gap-2 px-7 py-3 rounded-lg
-                           bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold
-                           transition-colors shadow-lg shadow-blue-900/30">
+                  className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-colors shadow-lg shadow-blue-900/30">
                   <Code2 className="w-4 h-4" />
                   {user ? "Continue Solving" : "Start Solving Free"}
                 </Link>
                 {!user?.is_pro && (
                   <Link href="/upgrade"
-                    className="inline-flex items-center gap-2 px-7 py-3 rounded-lg
-                             border border-[#2a2a2a] hover:border-[#3a3a3a]
-                             bg-[#141414] hover:bg-[#1a1a1a]
-                             text-slate-300 text-sm font-semibold transition-colors">
+                    className="inline-flex items-center gap-2 px-7 py-3 rounded-lg border border-[#2a2a2a] hover:border-[#3a3a3a] bg-[#141414] hover:bg-[#1a1a1a] text-slate-300 text-sm font-semibold transition-colors">
                     <Zap className="w-4 h-4 text-yellow-400" /> Upgrade to Pro
                   </Link>
                 )}
@@ -213,9 +206,7 @@ export default function HomePage() {
                           {c.is_rated && <span className="text-blue-500">Rated</span>}
                         </div>
                         <Link href={`/contests/${c.slug}`}
-                          className="block w-full text-center py-1.5 rounded-lg text-xs font-semibold
-                                   bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/20
-                                   text-blue-400 transition-colors">
+                          className="block w-full text-center py-1.5 rounded-lg text-xs font-semibold bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/20 text-blue-400 transition-colors">
                           {c.is_registered ? "View" : c.status === "live" ? "Join Now" : "Register"}
                         </Link>
                       </div>
@@ -241,14 +232,11 @@ export default function HomePage() {
                   </p>
                   <div className="space-y-2">
                     <Link href="/auth/register"
-                      className="block w-full text-center py-2 rounded-lg text-xs font-bold
-                               bg-blue-600 hover:bg-blue-500 text-white transition-colors">
+                      className="block w-full text-center py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors">
                       Create free account
                     </Link>
                     <Link href="/auth/login"
-                      className="block w-full text-center py-2 rounded-lg text-xs font-semibold
-                               bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a]
-                               text-slate-400 transition-colors">
+                      className="block w-full text-center py-2 rounded-lg text-xs font-semibold bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-slate-400 transition-colors">
                       Sign in
                     </Link>
                   </div>
