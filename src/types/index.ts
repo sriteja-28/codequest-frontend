@@ -135,11 +135,18 @@ export interface Submission {
 
 export type ContestStatus = "upcoming" | "live" | "ended";
 
+
 export interface ContestProblem {
   id: number;
   problem: Problem;
   order_index: number;
   score: number;
+  contest_accepted: number;
+  contest_total: number;
+  // Per-user progress
+  user_solved: boolean;
+  user_wrong_attempts: number;
+  user_solve_time: number | null;
 }
 
 export interface Contest {
@@ -159,6 +166,7 @@ export interface Contest {
   is_registered?: boolean;
 }
 
+
 export interface LeaderboardEntry {
   rank: number | null;
   username: string;
@@ -166,6 +174,12 @@ export interface LeaderboardEntry {
   avatar_url: string;
   final_score: number;
   is_disqualified: boolean;
+  problem_stats: Record<string, {
+    solved: boolean;
+    wrong_attempts: number;
+    solve_time: number | null;
+    score: number;
+  }>;
 }
 
 // ─── Discussions ───────────────────────────────────────────────────────────
