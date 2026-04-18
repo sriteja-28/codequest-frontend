@@ -71,27 +71,27 @@ export default function ProblemDetailPage({
 
 
 
-useEffect(() => {
-  if (!problem) return;
+  useEffect(() => {
+    if (!problem) return;
 
-  const starterCodeField = `starter_code_${language}` as keyof typeof problem;
-  let starterCode = problem[starterCodeField] as string | undefined;
+    const starterCodeField = `starter_code_${language}` as keyof typeof problem;
+    let starterCode = problem[starterCodeField] as string | undefined;
 
-  if (!starterCode || starterCode.trim() === "") {
-    const fallbacks: Record<Language, string> = {
-      python: `def solution():\n    pass\n`,
-      cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n`,
-      java: `public class Solution {\n    public void solve() {}\n}\n`,
-      javascript: `function solution() {}\n`,
-    };
-    starterCode = fallbacks[language];
-  }
+    if (!starterCode || starterCode.trim() === "") {
+      const fallbacks: Record<Language, string> = {
+        python: `def solution():\n    pass\n`,
+        cpp: `#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n`,
+        java: `public class Solution {\n    public void solve() {}\n}\n`,
+        javascript: `function solution() {}\n`,
+      };
+      starterCode = fallbacks[language];
+    }
 
-  // ✅ Check localStorage FIRST, fall back to starter — one setCode call, right priority
-  const saved = localStorage.getItem(`code:${slug}:${language}`);
-  setCode(saved ?? starterCode);
+    // ✅ Check localStorage FIRST, fall back to starter — one setCode call, right priority
+    const saved = localStorage.getItem(`code:${slug}:${language}`);
+    setCode(saved ?? starterCode);
 
-}, [slug, language, problem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, language, problem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // After the starter-code useEffect, add:
 
@@ -104,16 +104,16 @@ useEffect(() => {
 
   // Save code on every keystroke (debounced via useRef)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-useEffect(() => {
-  if (!problem) return;      // ← don't save until problem is loaded
-  if (!code) return;         // ← don't overwrite with empty string
+  useEffect(() => {
+    if (!problem) return;      // ← don't save until problem is loaded
+    if (!code) return;         // ← don't overwrite with empty string
 
-  clearTimeout(saveTimer.current);
-  saveTimer.current = setTimeout(() => {
-    localStorage.setItem(`code:${slug}:${language}`, code);
-  }, 500);
-  return () => clearTimeout(saveTimer.current);
-}, [code, slug, language, problem]);
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      localStorage.setItem(`code:${slug}:${language}`, code);
+    }, 500);
+    return () => clearTimeout(saveTimer.current);
+  }, [code, slug, language, problem]);
 
   // useEffect(() => {
   //   if (problem) {
@@ -182,28 +182,28 @@ useEffect(() => {
   };
 
   // Handlers
- const handleRun = async () => {
-  setLiveStatus(null);
-  setConsoleOpen(true);
-  setConsoleTab("testcase");
+  const handleRun = async () => {
+    setLiveStatus(null);
+    setConsoleOpen(true);
+    setConsoleTab("testcase");
 
-  // ← add this, same as handleSubmit
-  if (submissionId) {
-    queryClient.removeQueries({ queryKey: ["submission", submissionId] });
-  }
-  setSubmissionId(null);
-
-  try {
-    const res = await runMutation.mutateAsync({ problem_slug: slug, code, language });
-    if (res.submission_id) {
-      setSubmissionId(res.submission_id);
-      setLiveStatus("QUEUED");
-      setConsoleTab("result");
+    // ← add this, same as handleSubmit
+    if (submissionId) {
+      queryClient.removeQueries({ queryKey: ["submission", submissionId] });
     }
-  } catch (e) {
-    console.error("Run code failed:", e);
-  }
-};
+    setSubmissionId(null);
+
+    try {
+      const res = await runMutation.mutateAsync({ problem_slug: slug, code, language });
+      if (res.submission_id) {
+        setSubmissionId(res.submission_id);
+        setLiveStatus("QUEUED");
+        setConsoleTab("result");
+      }
+    } catch (e) {
+      console.error("Run code failed:", e);
+    }
+  };
 
   const handleSubmit = async () => {
     setConsoleTab("result");
@@ -346,7 +346,7 @@ useEffect(() => {
               <div className="flex-1 overflow-y-auto">
                 {leftTab === "description" && <DescriptionTab problem={problem} />}
                 {leftTab === "solutions" && <SolutionsTab problem={problem} />}
-                {leftTab === "submissions" && <SubmissionsTab problemSlug={slug} problem={problem}  />}
+                {leftTab === "submissions" && <SubmissionsTab problemSlug={slug} problem={problem} />}
                 {leftTab === "discussions" && <DiscussionsTab problemSlug={slug} />}
               </div>
             </div>
