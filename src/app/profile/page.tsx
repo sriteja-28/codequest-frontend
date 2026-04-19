@@ -33,7 +33,7 @@ function buildHeatmap(subs: Submission[]) {
 
 function getYears(subs: Submission[]): number[] {
   const set = new Set<number>();
-  const now  = new Date().getFullYear();
+  const now = new Date().getFullYear();
   set.add(now);
   for (const s of subs) {
     const y = parseInt(s.created_at?.slice(0, 4) ?? "0");
@@ -57,8 +57,8 @@ function calcStreak(subs: Submission[]) {
 
 // Build 12-month bar data for a given year
 function buildMonthlyData(subs: Submission[], year: number) {
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const counts  = Array(12).fill(0);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const counts = Array(12).fill(0);
   const accepted = Array(12).fill(0);
   for (const s of subs) {
     if (!s.created_at?.startsWith(String(year))) continue;
@@ -71,28 +71,28 @@ function buildMonthlyData(subs: Submission[], year: number) {
 
 // ─── Heatmap ─────────────────────────────────────────────────────────────
 
-const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function cellColor(n: number) {
   if (n === 0) return "#1a1a1a";
   if (n === 1) return "#1e3a5f";
-  if (n <= 3)  return "#1d4ed8";
-  if (n <= 6)  return "#3b82f6";
+  if (n <= 3) return "#1d4ed8";
+  if (n <= 6) return "#3b82f6";
   return "#60a5fa";
 }
 
 function Heatmap({ subs, year }: { subs: Submission[]; year: number }) {
-  const map    = useMemo(() => buildHeatmap(subs), [subs]);
-  const jan1   = new Date(year, 0, 1);
-  const pad    = jan1.getDay(); // Sun=0
-  const start  = new Date(jan1.getTime() - pad * 86400000);
+  const map = useMemo(() => buildHeatmap(subs), [subs]);
+  const jan1 = new Date(year, 0, 1);
+  const pad = jan1.getDay(); // Sun=0
+  const start = new Date(jan1.getTime() - pad * 86400000);
   const weeks: { iso: string; count: number; inYear: boolean }[][] = [];
   let cur = new Date(start);
 
   for (let w = 0; w < 53; w++) {
     const week = [];
     for (let d = 0; d < 7; d++) {
-      const iso    = cur.toISOString().slice(0, 10);
+      const iso = cur.toISOString().slice(0, 10);
       const inYear = cur.getFullYear() === year;
       week.push({ iso, count: inYear ? (map[iso] || 0) : -1, inYear });
       cur = new Date(cur.getTime() + 86400000);
@@ -141,7 +141,7 @@ function Heatmap({ subs, year }: { subs: Submission[]; year: number }) {
           <div className="flex gap-0.5">
             {/* Day labels */}
             <div className="flex flex-col gap-0.5 mr-1 justify-around" style={{ paddingTop: 2 }}>
-              {["M","W","F"].map(d => (
+              {["M", "W", "F"].map(d => (
                 <div key={d} className="text-[8px] text-slate-700 h-5 flex items-center">{d}</div>
               ))}
             </div>
@@ -170,11 +170,11 @@ function StatusDonut({ accepted, wrong, runtime, other }: {
   accepted: number; wrong: number; runtime: number; other: number;
 }) {
   const total = accepted + wrong + runtime + other || 1;
-  const data  = [
-    { name: "Accepted",      value: accepted, fill: "#22c55e" },
-    { name: "Wrong Answer",  value: wrong,    fill: "#ef4444" },
-    { name: "Runtime Error", value: runtime,  fill: "#f97316" },
-    { name: "Other",         value: other,    fill: "#475569" },
+  const data = [
+    { name: "Accepted", value: accepted, fill: "#22c55e" },
+    { name: "Wrong Answer", value: wrong, fill: "#ef4444" },
+    { name: "Runtime Error", value: runtime, fill: "#f97316" },
+    { name: "Other", value: other, fill: "#475569" },
   ].filter(d => d.value > 0);
 
   const pct = Math.round((accepted / total) * 100);
@@ -217,16 +217,16 @@ function StatusDonut({ accepted, wrong, runtime, other }: {
 // ─── Progress section ─────────────────────────────────────────────────────
 
 const TOPICS = [
-  { name: "Arrays & Hashing",     total: 9,  tag: "Array"            },
-  { name: "Two Pointers",          total: 5,  tag: "Two Pointers"     },
-  { name: "Sliding Window",        total: 6,  tag: "Sliding Window"   },
-  { name: "Binary Search",         total: 7,  tag: "Binary Search"    },
-  { name: "Linked List",           total: 11, tag: "Linked List"      },
-  { name: "Stack",                 total: 7,  tag: "Stack"            },
-  { name: "Trees",                 total: 15, tag: "Tree"             },
-  { name: "Dynamic Programming",   total: 20, tag: "Dynamic Programming" },
-  { name: "Graphs",                total: 13, tag: "Graph"            },
-  { name: "Greedy",                total: 8,  tag: "Greedy"           },
+  { name: "Arrays & Hashing", total: 9, tag: "Array" },
+  { name: "Two Pointers", total: 5, tag: "Two Pointers" },
+  { name: "Sliding Window", total: 6, tag: "Sliding Window" },
+  { name: "Binary Search", total: 7, tag: "Binary Search" },
+  { name: "Linked List", total: 11, tag: "Linked List" },
+  { name: "Stack", total: 7, tag: "Stack" },
+  { name: "Trees", total: 15, tag: "Tree" },
+  { name: "Dynamic Programming", total: 20, tag: "Dynamic Programming" },
+  { name: "Graphs", total: 13, tag: "Graph" },
+  { name: "Greedy", total: 8, tag: "Greedy" },
 ];
 
 function ProgressSection({ accepted }: { accepted: Submission[] }) {
@@ -262,7 +262,7 @@ function ProgressSection({ accepted }: { accepted: Submission[] }) {
           // With current data we don't track per-topic, so show 0/total
           // When backend exposes /api/users/me/progress/ hook this up
           const done = 0;
-          const pct  = total ? Math.round((done / total) * 100) : 0;
+          const pct = total ? Math.round((done / total) * 100) : 0;
 
           return (
             <div key={name} className="flex items-center gap-3">
@@ -313,32 +313,32 @@ function ProgressSection({ accepted }: { accepted: Submission[] }) {
 
 export default function ProfilePage() {
   const { data: user, isLoading } = useMe();
-  const { data: allHistory }       = useSubmissionHistory();
-  const updateMe                   = useUpdateMe();
+  const { data: allHistory } = useSubmissionHistory();
+  const updateMe = useUpdateMe();
 
-  const [editing,     setEditing]     = useState(false);
+  const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState("");
-  const [bio,         setBio]         = useState("");
-  const [saveError,   setSaveError]   = useState("");
-  const [saving,      setSaving]      = useState(false);
-  const [showDelete,  setShowDelete]  = useState(false);
+  const [bio, setBio] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
-  const [showReset,   setShowReset]   = useState(false);
+  const [showReset, setShowReset] = useState(false);
 
-  const history: Submission[]  = allHistory ?? [];
-  const years                   = useMemo(() => getYears(history), [history]);
-  const [selYear, setSelYear]   = useState<number>(() => new Date().getFullYear());
+  const history: Submission[] = allHistory ?? [];
+  const years = useMemo(() => getYears(history), [history]);
+  const [selYear, setSelYear] = useState<number>(() => new Date().getFullYear());
 
-  const yearSubs    = useMemo(() => history.filter(s => s.created_at?.startsWith(String(selYear))), [history, selYear]);
-  const accepted    = useMemo(() => history.filter(s => s.status === "ACCEPTED"), [history]);
-  const best        = useMemo(() => calcStreak(history), [history]);
-  const monthly     = useMemo(() => buildMonthlyData(history, selYear), [history, selYear]);
+  const yearSubs = useMemo(() => history.filter(s => s.created_at?.startsWith(String(selYear))), [history, selYear]);
+  const accepted = useMemo(() => history.filter(s => s.status === "ACCEPTED"), [history]);
+  // const best        = useMemo(() => calcStreak(history), [history]);
+  const monthly = useMemo(() => buildMonthlyData(history, selYear), [history, selYear]);
   const uniqueSolved = new Set(accepted.map(s => s.problem_slug)).size;
 
   // Status breakdown
-  const wrong   = history.filter(s => s.status === "WRONG_ANSWER").length;
+  const wrong = history.filter(s => s.status === "WRONG_ANSWER").length;
   const runtime = history.filter(s => s.status === "RUNTIME_ERROR").length;
-  const other   = history.filter(s => !["ACCEPTED","WRONG_ANSWER","RUNTIME_ERROR"].includes(s.status)).length;
+  const other = history.filter(s => !["ACCEPTED", "WRONG_ANSWER", "RUNTIME_ERROR"].includes(s.status)).length;
 
   const startEdit = () => {
     if (!user) return;
@@ -382,6 +382,7 @@ export default function ProfilePage() {
     );
   }
 
+  const best = user.best_streak;
   const initials = (user.display_name || user.username)
     .split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
 
@@ -493,10 +494,10 @@ export default function ProfilePage() {
               {/* Quick stats grid */}
               <div className="grid grid-cols-2 gap-2.5">
                 {[
-                  { icon: CheckCircle2, label: "Solved",       value: uniqueSolved,          color: "text-green-400",  bg: "from-green-500/5"  },
-                  { icon: Flame,        label: "Streak",        value: `${user.current_streak}d`, color: "text-orange-400", bg: "from-orange-500/5" },
-                  { icon: Target,       label: "Best Streak",  value: `${best}d`,            color: "text-blue-400",   bg: "from-blue-500/5"   },
-                  { icon: TrendingUp,   label: "Submissions",  value: history.length,         color: "text-purple-400", bg: "from-purple-500/5" },
+                  { icon: CheckCircle2, label: "Solved", value: uniqueSolved, color: "text-green-400", bg: "from-green-500/5" },
+                  { icon: Flame, label: "Streak", value: `${user.current_streak}d`, color: "text-orange-400", bg: "from-orange-500/5" },
+                  { icon: Target, label: "Best Streak", value: `${best}d`, color: "text-blue-400", bg: "from-blue-500/5" },
+                  { icon: TrendingUp, label: "Submissions", value: history.length, color: "text-purple-400", bg: "from-purple-500/5" },
                 ].map(({ icon: Icon, label, value, color, bg }) => (
                   <div key={label}
                     className={cn(
@@ -586,13 +587,13 @@ export default function ProfilePage() {
                   <ResponsiveContainer width="100%" height={130}>
                     <AreaChart data={monthly} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                       <defs>
-                        <linearGradient id="gTotal"    x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%"   stopColor="#3b82f6" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}   />
+                        <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="gAccepted" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%"   stopColor="#22c55e" stopOpacity={0.3} />
-                          <stop offset="100%" stopColor="#22c55e" stopOpacity={0}   />
+                          <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#475569" }} axisLine={false} tickLine={false} />
@@ -602,7 +603,7 @@ export default function ProfilePage() {
                         labelStyle={{ color: "#94a3b8" }}
                         cursor={{ stroke: "#333" }}
                       />
-                      <Area type="monotone" dataKey="total"    name="Total"    stroke="#3b82f6" fill="url(#gTotal)"    strokeWidth={1.5} dot={false} />
+                      <Area type="monotone" dataKey="total" name="Total" stroke="#3b82f6" fill="url(#gTotal)" strokeWidth={1.5} dot={false} />
                       <Area type="monotone" dataKey="accepted" name="Accepted" stroke="#22c55e" fill="url(#gAccepted)" strokeWidth={1.5} dot={false} />
                     </AreaChart>
                   </ResponsiveContainer>

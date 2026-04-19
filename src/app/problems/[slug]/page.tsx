@@ -4,7 +4,7 @@ import { useState, useEffect, use, useRef } from "react";
 import { Allotment } from "allotment";
 import {
   ChevronLeft, Bug, Maximize2, Minimize2, Play, Send, ChevronDown,
-  ChevronUp, Sparkles,
+  ChevronUp, Sparkles, AlertCircle, Clock, Zap, Server, ChevronRight
 } from "lucide-react";
 
 import CodeEditor from "@/components/editor/CodeEditor";
@@ -15,11 +15,12 @@ import SubmissionsTab from "@/components/problems/SubmissionsTab";
 import DiscussionsTab from "@/components/problems/DiscussionsTab";
 import ConsolePanel from "@/components/problems/ConsolePanel";
 
-import { useProblem, useSubmitCode, useSubmission, useRunCode } from "@/lib/hooks";
+import { useProblem, useSubmitCode, useSubmission, useRunCode, useAuth } from "@/lib/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { submissionWS } from "@/lib/ws";
 import { cn } from "@/lib/utils";
 import type { Language, SubmissionStatus } from "@/types";
+import { useRouter } from "next/navigation";
 
 export default function ProblemDetailPage({
   params,
@@ -27,6 +28,8 @@ export default function ProblemDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
+  const router = useRouter();
+  const { user } = useAuth();
 
   // State management
   const [language, setLanguage] = useState<Language>("python");
@@ -37,6 +40,15 @@ export default function ProblemDetailPage({
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<SubmissionStatus | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // ✅ Rate limiting state
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const [queueError, setQueueError] = useState<{
+    message: string;
+    queueDepth: number;
+    estimatedWait: number;
+  } | null>(null);
+  const [countdown, setCountdown] = useState(0);
 
   // Editor settings
   const [fontSize, setFontSize] = useState(14);
@@ -62,15 +74,6 @@ export default function ProblemDetailPage({
   const queryClient = useQueryClient();
 
   // Load starter code when problem or language changes
-  // useEffect(() => {
-  //   if (!problem) return;
-  //   const key = `starter_code_${language}` as keyof typeof problem;
-  //   const starter = (problem[key] as string | undefined) || `class Solution {\n    // Write your solution here\n}`;
-  //   setCode(starter);
-  // }, [problem?.slug, language]); // eslint-disable-line react-hooks/exhaustive-deps
-
-
-
   useEffect(() => {
     if (!problem) return;
 
@@ -87,26 +90,17 @@ export default function ProblemDetailPage({
       starterCode = fallbacks[language];
     }
 
-    // ✅ Check localStorage FIRST, fall back to starter — one setCode call, right priority
+    // Check localStorage FIRST, fall back to starter
     const saved = localStorage.getItem(`code:${slug}:${language}`);
     setCode(saved ?? starterCode);
 
-  }, [slug, language, problem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, language, problem?.id]);
 
-  // After the starter-code useEffect, add:
-
-  // Restore saved code from localStorage (runs once per slug+language)
-  // useEffect(() => {
-  //   if (!problem) return;
-  //   const saved = localStorage.getItem(`code:${slug}:${language}`);
-  //   if (saved !== null) setCode(saved);
-  // }, [slug, language, problem?.id]); // same deps as starter-code effect
-
-  // Save code on every keystroke (debounced via useRef)
+  // Save code on every keystroke (debounced)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
-    if (!problem) return;      // ← don't save until problem is loaded
-    if (!code) return;         // ← don't overwrite with empty string
+    if (!problem) return;
+    if (!code) return;
 
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
@@ -115,37 +109,27 @@ export default function ProblemDetailPage({
     return () => clearTimeout(saveTimer.current);
   }, [code, slug, language, problem]);
 
-  // useEffect(() => {
-  //   if (problem) {
-  //     console.log("✅ Problem loaded:", {
-  //       slug: problem.slug,
-  //       python: !!problem.starter_code_python,
-  //       cpp: !!problem.starter_code_cpp,
-  //       java: !!problem.starter_code_java,
-  //       js: !!problem.starter_code_javascript,
-  //     });
-  //   }
-  // }, [problem]);
+  // ✅ Countdown timer for rate limits
+  useEffect(() => {
+    if (countdown <= 0) {
+      setRateLimitError(null);
+      return;
+    }
 
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          setRateLimitError(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   // WebSocket for live submission status
-  // useEffect(() => {
-  //   if (!submissionId) return;
-  //   const ws = submissionWS(submissionId);
-  //   ws.connect();
-  //   const off = ws.on((msg) => {
-  //     if (msg.type === "status_update") {
-  //       setLiveStatus(msg.status as SubmissionStatus);
-  //     }
-  //   });
-  //   return () => {
-  //     off();
-  //     ws.close();
-  //   };
-  // }, [submissionId]);
-
-
-  // ✅ KEEP THIS, with history invalidation added
   useEffect(() => {
     if (!submissionId) return;
     const ws = submissionWS(submissionId);
@@ -157,7 +141,14 @@ export default function ProblemDetailPage({
         const terminal = !["QUEUED", "RUNNING"].includes(status);
         if (terminal) {
           queryClient.invalidateQueries({ queryKey: ["submission", submissionId] });
-          queryClient.invalidateQueries({ queryKey: ["submissions", "history", slug] }); // ← add
+          queryClient.invalidateQueries({ queryKey: ["submissions", "history", slug] });
+
+
+          // refresh problems list so is_solved updates everywhere
+          if (status === "ACCEPTED") {
+            queryClient.invalidateQueries({ queryKey: ["problems"] });  // all problems queries
+            queryClient.invalidateQueries({ queryKey: ["me"] });        // update problems_solved count
+          }
         }
       }
     });
@@ -181,37 +172,62 @@ export default function ProblemDetailPage({
     }
   };
 
-  // Handlers
+  // ✅ Handle Run with rate limiting
   const handleRun = async () => {
     setLiveStatus(null);
     setConsoleOpen(true);
     setConsoleTab("testcase");
+    setRateLimitError(null);
+    setQueueError(null);
 
-    // ← add this, same as handleSubmit
     if (submissionId) {
       queryClient.removeQueries({ queryKey: ["submission", submissionId] });
     }
     setSubmissionId(null);
 
     try {
-      const res = await runMutation.mutateAsync({ problem_slug: slug, code, language });
+      const res = await runMutation.mutateAsync({
+        problem_slug: slug,
+        code,
+        language
+      });
+
       if (res.submission_id) {
         setSubmissionId(res.submission_id);
         setLiveStatus("QUEUED");
         setConsoleTab("result");
       }
-    } catch (e) {
-      console.error("Run code failed:", e);
+    } catch (error: any) {
+      console.error("Run code failed:", error);
+
+      // ✅ Handle rate limit (429)
+      if (error.response?.status === 429) {
+        const retryAfter = parseInt(error.response.headers['retry-after'] || '60');
+        const detail = error.response.data?.detail || 'Rate limit exceeded for Run';
+        setRateLimitError(detail);
+        setCountdown(retryAfter);
+      }
+      // ✅ Handle queue overload (503)
+      else if (error.response?.status === 503) {
+        const data = error.response.data;
+        setQueueError({
+          message: data.error || 'Judge system overloaded',
+          queueDepth: data.queue_depth || 0,
+          estimatedWait: data.estimated_wait_seconds || 0,
+        });
+      }
     }
   };
 
+  // ✅ Handle Submit with rate limiting
   const handleSubmit = async () => {
     setConsoleTab("result");
     setConsoleOpen(true);
     setSubmissionId(null);
     setLiveStatus(null);
+    setRateLimitError(null);
+    setQueueError(null);
 
-    // clear previous submission from cache
     if (submissionId) {
       queryClient.removeQueries({ queryKey: ["submission", submissionId] });
     }
@@ -222,10 +238,28 @@ export default function ProblemDetailPage({
         code,
         language,
       });
+
       setSubmissionId(res.submission_id);
       setLiveStatus("QUEUED");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Submission failed:", error);
+
+      // ✅ Handle rate limit (429)
+      if (error.response?.status === 429) {
+        const retryAfter = parseInt(error.response.headers['retry-after'] || '60');
+        const detail = error.response.data?.detail || 'Submission limit reached';
+        setRateLimitError(detail);
+        setCountdown(retryAfter);
+      }
+      // ✅ Handle queue overload (503)
+      else if (error.response?.status === 503) {
+        const data = error.response.data;
+        setQueueError({
+          message: data.error || 'Judge system overloaded',
+          queueDepth: data.queue_depth || 0,
+          estimatedWait: data.estimated_wait_seconds || 0,
+        });
+      }
     }
   };
 
@@ -236,7 +270,6 @@ export default function ProblemDetailPage({
   };
 
   const handleResetLayout = () => {
-    // Reset all settings to defaults
     setFontSize(14);
     setTabSize(4);
     setKeyBinding("standard");
@@ -247,16 +280,11 @@ export default function ProblemDetailPage({
     setConsoleOpen(true);
     setLeftTab("description");
     setConsoleTab("testcase");
-
-    // Force Allotment to reset by changing key
     setLayoutKey(prev => prev + 1);
   };
 
-  // const currentStatus = liveStatus ?? submissionData?.status ?? null;
   const currentStatus = (() => {
-    // If we have real data from the server, always trust it
     if (submissionData?.status) return submissionData.status;
-    // Otherwise show the live WS status (QUEUED/RUNNING)
     return liveStatus;
   })();
 
@@ -282,9 +310,10 @@ export default function ProblemDetailPage({
 
   return (
     <div className="h-full flex flex-col bg-[#0a0a0a] text-slate-300 overflow-hidden">
-      {/* Top bar - hidden in fullscreen */}
+      {/* Top bar */}
       {!isFullscreen && (
         <header className="h-12 shrink-0 border-b border-[#1e1e1e] bg-[#141414] flex items-center justify-between px-4 z-30">
+
           <div className="flex items-center gap-3 text-sm min-w-0">
             <a
               href="/problems"
@@ -295,6 +324,36 @@ export default function ProblemDetailPage({
             </a>
             <span className="text-[#2a2a2a] hidden sm:block">|</span>
             <span className="text-slate-200 font-semibold truncate">{problem.title}</span>
+
+
+            <div className="flex items-center gap-1 ml-2 shrink-0">
+              <button
+                onClick={() => problem.prev_slug && router.push(`/problems/${problem.prev_slug}`)}
+                disabled={!problem.prev_slug}
+                title={problem.prev_slug ? "Previous problem" : "No previous problem"}
+                className={cn(
+                  "w-6 h-6 flex items-center justify-center rounded border transition-colors",
+                  problem.prev_slug
+                    ? "border-[#2a2a2a] text-slate-400 hover:text-white hover:border-[#444] hover:bg-[#252525]"
+                    : "border-[#1e1e1e] text-slate-700 cursor-not-allowed"
+                )}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => problem.next_slug && router.push(`/problems/${problem.next_slug}`)}
+                disabled={!problem.next_slug}
+                title={problem.next_slug ? "Next problem" : "No next problem"}
+                className={cn(
+                  "w-6 h-6 flex items-center justify-center rounded border transition-colors",
+                  problem.next_slug
+                    ? "border-[#2a2a2a] text-slate-400 hover:text-white hover:border-[#444] hover:bg-[#252525]"
+                    : "border-[#1e1e1e] text-slate-700 cursor-not-allowed"
+                )}
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -316,15 +375,15 @@ export default function ProblemDetailPage({
             </button>
           </div>
         </header>
-      )}
+      )
+      }
 
-      {/* Main content area */}
+      {/* Main content */}
       <main className="flex-1 overflow-hidden">
         <Allotment key={layoutKey} defaultSizes={[40, 60]}>
-          {/* LEFT PANE: Description, Solutions, Submissions, Discussions */}
+          {/* LEFT PANE */}
           <Allotment.Pane minSize={280}>
             <div className="h-full flex flex-col bg-[#141414] border-r border-[#1e1e1e]">
-              {/* Tabs */}
               <div className="flex shrink-0 border-b border-[#1e1e1e] bg-[#1a1a1a] overflow-x-auto">
                 {(["description", "solutions", "submissions", "discussions"] as const).map((t) => (
                   <button
@@ -342,7 +401,6 @@ export default function ProblemDetailPage({
                 ))}
               </div>
 
-              {/* Tab content */}
               <div className="flex-1 overflow-y-auto">
                 {leftTab === "description" && <DescriptionTab problem={problem} />}
                 {leftTab === "solutions" && <SolutionsTab problem={problem} />}
@@ -352,7 +410,7 @@ export default function ProblemDetailPage({
             </div>
           </Allotment.Pane>
 
-          {/* RIGHT PANE: Editor + Console */}
+          {/* RIGHT PANE */}
           <Allotment.Pane minSize={380}>
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-hidden">
@@ -381,6 +439,59 @@ export default function ProblemDetailPage({
                         onResetLayout={handleResetLayout}
                       />
 
+                      {/* ✅ Error Banners */}
+                      <div className="px-4 pt-3 space-y-2">
+                        {/* Rate Limit Error */}
+                        {rateLimitError && (
+                          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-yellow-300">{rateLimitError}</p>
+                                {countdown > 0 && (
+                                  <p className="text-xs text-yellow-400/80 flex items-center gap-1.5 mt-1">
+                                    <Clock className="w-3 h-3" />
+                                    Try again in {countdown} second{countdown !== 1 ? 's' : ''}
+                                  </p>
+                                )}
+
+                                {!user?.is_pro && (
+                                  <button
+                                    onClick={() => router.push('/upgrade')}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 
+                                               hover:from-blue-500 hover:to-purple-500 text-white text-xs font-semibold 
+                                               rounded-lg transition-all mt-2"
+                                  >
+                                    <Zap className="w-3 h-3" />
+                                    Upgrade to PRO for 10x more runs
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Queue Overload Error */}
+                        {queueError && (
+                          <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+                            <div className="flex items-start gap-2">
+                              <Server className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-orange-300">{queueError.message}</p>
+                                <p className="text-xs text-orange-400/80 mt-1">
+                                  {queueError.queueDepth} submissions in queue ·
+                                  Est. wait: {Math.ceil(queueError.estimatedWait / 60)} min
+                                </p>
+                                <p className="text-xs text-slate-400 mt-2">
+                                  Try using the <span className="font-semibold text-orange-300">Run</span> button
+                                  to test against sample cases, or wait a few minutes.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex-1 overflow-hidden relative">
                         <CodeEditor
                           value={code}
@@ -396,7 +507,6 @@ export default function ProblemDetailPage({
                           enableAutoComplete={enableAutoComplete}
                         />
 
-                        {/* Line/Col indicator - dynamically updated */}
                         <div className="absolute bottom-2 right-3 text-[10px] text-slate-600 font-mono 
                                         bg-[#1a1a1a] px-2 py-1 rounded border border-[#2a2a2a]">
                           Ln {cursorLine}, Col {cursorCol}
@@ -415,7 +525,6 @@ export default function ProblemDetailPage({
                         onClose={() => setConsoleOpen(false)}
                         submissionData={submissionData}
                         currentStatus={currentStatus}
-                        // isLoading={submitMutation.isPending}
                         isLoading={submitMutation.isPending || runMutation.isPending}
                       />
                     </Allotment.Pane>
@@ -457,25 +566,34 @@ export default function ProblemDetailPage({
                     </button>
                   )}
 
+                  {/* ✅ Run button with countdown */}
                   <button
-                    onClick={() => {
-                      handleRun();
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#252525] hover:bg-[#2e2e2e] 
-                               border border-[#333] text-slate-300 rounded text-xs font-semibold transition-colors"
+                    onClick={handleRun}
+                    disabled={runMutation.isPending || countdown > 0}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition-colors",
+                      countdown > 0 || runMutation.isPending
+                        ? "bg-[#1a1a1a] border-[#252525] text-slate-600 cursor-not-allowed"
+                        : "bg-[#252525] hover:bg-[#2e2e2e] border-[#333] text-slate-300"
+                    )}
                   >
-                    <Play className="w-3 h-3 fill-current" /> Run
+                    <Play className="w-3 h-3 fill-current" />
+                    {countdown > 0 ? `Wait ${countdown}s` : runMutation.isPending ? 'Running…' : 'Run'}
                   </button>
 
+                  {/* ✅ Submit button with countdown */}
                   <button
                     onClick={handleSubmit}
-                    disabled={submitMutation.isPending}
-                    className="flex items-center gap-1.5 px-5 py-1.5 bg-green-600 hover:bg-green-500
-                               disabled:opacity-50 disabled:cursor-not-allowed text-white rounded 
-                               text-xs font-bold transition-colors shadow shadow-green-900/30"
+                    disabled={submitMutation.isPending || countdown > 0}
+                    className={cn(
+                      "flex items-center gap-1.5 px-5 py-1.5 rounded text-xs font-bold transition-colors shadow",
+                      countdown > 0 || submitMutation.isPending
+                        ? "bg-slate-600 text-slate-400 cursor-not-allowed shadow-none"
+                        : "bg-green-600 hover:bg-green-500 text-white shadow-green-900/30"
+                    )}
                   >
                     <Send className="w-3 h-3" />
-                    {submitMutation.isPending ? "Submitting…" : "Submit"}
+                    {countdown > 0 ? `Wait ${countdown}s` : submitMutation.isPending ? 'Submitting…' : 'Submit'}
                   </button>
                 </div>
               </div>
@@ -483,6 +601,6 @@ export default function ProblemDetailPage({
           </Allotment.Pane>
         </Allotment>
       </main>
-    </div>
+    </div >
   );
 }

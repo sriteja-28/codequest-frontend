@@ -152,9 +152,22 @@ export function useSubmitCode() {
   });
 }
 
+// export function useRunCode() {
+//   return useMutation({
+//     mutationFn: submissionsApi.run, 
+//   });
+// }
+
 export function useRunCode() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: submissionsApi.run, 
+    mutationFn: submissionsApi.run,
+    onError: (error: any) => {
+      // Handle rate limit errors
+      if (error.response?.status === 429) {
+        console.log('Rate limit hit for Run');
+      }
+    },
   });
 }
 
@@ -224,14 +237,14 @@ export function useComments(threadId: number) {
 export function usePostComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ 
-      threadId, 
-      body_md, 
+    mutationFn: ({
+      threadId,
+      body_md,
       parent,
-      isAnonymous = false 
-    }: { 
-      threadId: number; 
-      body_md: string; 
+      isAnonymous = false
+    }: {
+      threadId: number;
+      body_md: string;
       parent?: number;
       isAnonymous?: boolean;
     }) => discussApi.createComment(threadId, body_md, parent, isAnonymous),
@@ -245,13 +258,13 @@ export function usePostComment() {
 export function useCreateThread() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ 
-      problemSlug, 
-      title, 
+    mutationFn: ({
+      problemSlug,
+      title,
       content,
       isAnonymous = false
-    }: { 
-      problemSlug: string; 
+    }: {
+      problemSlug: string;
       title: string;
       content: string;
       isAnonymous?: boolean;
@@ -262,7 +275,7 @@ export function useCreateThread() {
   });
 }
 
-// ✅ NEW: Hook for upvoting threads
+// Hook for upvoting threads
 export function useUpvoteThread() {
   const qc = useQueryClient();
   return useMutation({
@@ -275,7 +288,7 @@ export function useUpvoteThread() {
   });
 }
 
-// ✅ NEW: Hook for upvoting comments
+// Hook for upvoting comments
 export function useUpvoteComment() {
   const qc = useQueryClient();
   return useMutation({
@@ -287,7 +300,7 @@ export function useUpvoteComment() {
   });
 }
 
-// ✅ NEW: Hook for accepting answers
+// Hook for accepting answers
 export function useAcceptAnswer() {
   const qc = useQueryClient();
   return useMutation({
@@ -405,7 +418,7 @@ export function useModerateComment() {
 export function useAuth() {
   const user = useAuthStore((s) => s.user);
   const { data: meData, isLoading } = useMe();
-  
+
   return {
     user: user || meData || null,
     isAuthenticated: !!user || !!meData,

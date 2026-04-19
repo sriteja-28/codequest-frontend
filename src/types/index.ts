@@ -16,7 +16,7 @@ export interface User {
   plan_expires_at: string | null;
   problems_solved: number;
   current_streak: number;
-  // best_streak: number;
+  best_streak: number;
   last_active_date: string | null;
   ai_hint_limit: number;
   ai_chat_limit: number;
@@ -92,6 +92,8 @@ export interface Problem {
   space_complexity?: string;
   complexity_notes_md?: string;
   solutions?: Solution[];
+  next_slug: string | null;   
+  prev_slug: string | null;
 }
 
 // ─── Submissions ───────────────────────────────────────────────────────────

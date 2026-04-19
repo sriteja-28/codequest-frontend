@@ -11,10 +11,14 @@ import {
 import type { Problem, Contest } from "@/types";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/ui/Footer";
+import { useMe } from "@/lib/hooks";
 
 
 export default function HomePage() {
-  const user = useAuthStore((s) => s.user);
+  const authUser = useAuthStore((s) => s.user);  // keep for auth check only
+  const { data: freshUser } = useMe();           // ← add this for live stats
+  // Use freshUser for stats if logged in, fall back to authUser for everything else
+  const user = freshUser ?? authUser;
 
   const { data: problemsData, isLoading: loadingProblems } = useProblems({ page: 1 });
   const { data: contests, isLoading: loadingContests } = useContests();
