@@ -1,175 +1,182 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useProblems, useTags, useSections, useSubmissionHistory, useMe } from "@/lib/hooks/index";
+import { useProblems, useSections, useSubmissionHistory, useMe } from "@/lib/hooks/index";
 import type { Problem, Section } from "@/types";
 
-import { StatsBar } from "./components/StatsBar";
-import { FiltersBar } from "./components/FiltersBar";
+import { LeftSidebar }  from "./components/LeftSidebar";
+import { DonutArc }     from "./components/DonutArc";
+import { FiltersBar }   from "./components/FiltersBar";
 import { SectionGroup } from "./components/SectionGroup";
+import { RightPanel }   from "./components/RightPanel";
 
 export default function ProblemsPage() {
-  const [search, setSearch] = useState("");
+  const [search,     setSearch]     = useState("");
   const [difficulty, setDifficulty] = useState("");
-  const [topic, setTopic] = useState("");
-  const [expandAll, setExpandAll] = useState(false);
+  // topic = topic slug (from sidebar topic click or filter bar)
+  // company = company slug (from sidebar company click)
+  // They are mutually exclusive — clicking one clears the other
+  const [topic,      setTopic]      = useState("");
+  const [company,    setCompany]    = useState("");
+  const [expandAll,  setExpandAll]  = useState<boolean | undefined>(undefined);
 
-  // Filtered problems for table
   const { data: response, isLoading } = useProblems({
-    search: search || undefined,
+    search:     search     || undefined,
     difficulty: difficulty || undefined,
-    topic: topic || undefined,
+    topic:      topic      || undefined,
+    // Pass company as a separate param if your API supports it,
+    // otherwise fall back to using topic param for company slug too
+    ...(company ? { company } : {}),
   });
 
-  // All problems for stats (no filters)
   const { data: allResponse } = useProblems({});
+  const { data: sections }    = useSections();
+  const { data: allHistory }  = useSubmissionHistory();
+  const { data: user }        = useMe();
 
-  const { data: topicTags } = useTags("TOPIC");
-  const { data: sections } = useSections();
-  const { data: allHistory } = useSubmissionHistory();
-  const { data: user } = useMe();
-
-  const problems: Problem[] = response?.results ?? [];
+  const problems:    Problem[] = response?.results    ?? [];
   const allProblems: Problem[] = allResponse?.results ?? [];
-  const totalCount = allResponse?.count ?? 0;
+  const totalCount             = allResponse?.count   ?? 0;
 
-  // Group problems by section
+  // Active filter label for display
+  const activeFilterLabel = company || topic || "";
+
+  // Group filtered problems by section, preserving section order
   const sectionMap = useMemo(() => {
     const map = new Map<string, { meta: Section; problems: Problem[] }>();
 
-    // Seed in section order from the sections API
     (sections ?? []).forEach((s) => {
       map.set(s.name, { meta: s, problems: [] });
     });
 
-    // Assign problems to sections
     problems.forEach((p) => {
-      const key = p.section?.name ?? "__unsectioned__";
+      const key = p.section?.name ?? "__other__";
       if (!map.has(key)) {
         map.set(key, {
-          meta: p.section ?? {
-            id: -1,
-            name: key,
-            display_name: "Other",
-            icon: "📂",
-            order_index: 999,
-          },
+          meta: p.section ?? { id: -1, name: key, display_name: "Other", icon: "📂", order_index: 999 },
           problems: [],
         });
       }
       map.get(key)!.problems.push(p);
     });
 
-    // Remove empty sections when a search/filter is active
-    if (search || difficulty || topic) {
+    if (search || difficulty || topic || company) {
       for (const [k, v] of map) {
         if (v.problems.length === 0) map.delete(k);
       }
     }
 
     return map;
-  }, [problems, sections, search, difficulty, topic]);
+  }, [problems, sections, search, difficulty, topic, company]);
 
-  // Today's accepted submissions count
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr    = new Date().toISOString().slice(0, 10);
   const todaySolved = (allHistory ?? []).filter(
     (s) => s.status === "ACCEPTED" && s.created_at?.startsWith(todayStr)
   ).length;
 
   const handleReset = () => {
-    setSearch("");
-    setDifficulty("");
+    setSearch(""); setDifficulty(""); setTopic(""); setCompany("");
+  };
+
+  // Sidebar: company click sets company, clears topic (and vice versa)
+  const handleSidebarCompanyClick = (slug: string) => {
+    setCompany((prev) => prev === slug ? "" : slug);
     setTopic("");
   };
 
-  // Loading skeletons
-  if (isLoading && allProblems.length === 0) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-600 text-xs">Loading problems…</p>
-        </div>
-      </div>
-    );
-  }
+  // Sidebar: topic click sets topic, clears company
+  const handleSidebarTopicClick = (slug: string) => {
+    setTopic((prev) => prev === slug ? "" : slug);
+    setCompany("");
+  };
+
+  const handleToggleExpand = () => {
+    setExpandAll((prev) => prev === true ? false : true);
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 py-6">
+        <div className="flex gap-5">
 
-        {/* ── Stats header ── */}
-        <StatsBar
-          problems={allProblems}
-          total={totalCount}
-          submissions={allHistory ?? []}
-          currentStreak={user?.current_streak ?? 0}
-          bestStreak={(user as any)?.best_streak ?? 0}
-          todaySolved={todaySolved}
-        />
+          {/* ══ LEFT: Company + Topic sidebar ══ */}
+          <LeftSidebar
+            activeTopic={topic}
+            activeCompany={company}
+            onTopicClick={handleSidebarTopicClick}
+            onCompanyClick={handleSidebarCompanyClick}
+          />
 
-        {/* ── Section title ── */}
-        <h1 className="text-2xl font-extrabold text-white mb-5 tracking-tight">
-          Problems
-          <span className="ml-3 text-sm font-normal text-slate-600">
-            {response?.count ?? 0} total
-          </span>
-        </h1>
+          {/* ══ CENTER: Arc donut + filters + sections ══ */}
+          <main className="flex-1 min-w-0 flex flex-col gap-4">
 
-        {/* ── Filters ── */}
-        <FiltersBar
-          search={search}
-          difficulty={difficulty}
-          topic={topic}
-          topicTags={topicTags}
-          onSearch={setSearch}
-          onDifficulty={setDifficulty}
-          onTopic={setTopic}
-          onReset={handleReset}
-          expandAll={expandAll}
-          onToggleExpand={() => setExpandAll((v) => !v)}
-        />
+            {/* Arc donut header */}
+            <div className="bg-[#0d0d0d] border border-[#191919] rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-extrabold text-white tracking-tight">Problems</h1>
+                <span className="text-[10px] text-slate-700 font-mono">{totalCount} total</span>
+              </div>
+              {allProblems.length > 0 && (
+                <DonutArc problems={allProblems} total={totalCount} />
+              )}
+            </div>
 
-        {/* ── Sections ── */}
-        {isLoading ? (
-          <div className="flex flex-col gap-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-12 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl animate-pulse"
-                style={{ opacity: 1 - i * 0.12 }}
-              />
-            ))}
-          </div>
-        ) : sectionMap.size === 0 ? (
-          <div className="text-center py-20 border-2 border-dashed border-[#1a1a1a] rounded-2xl">
-            <p className="text-slate-600 text-sm">No problems match your filters.</p>
-            <button
-              onClick={handleReset}
-              className="mt-3 text-indigo-400 hover:text-indigo-300 text-xs hover:underline"
-            >
-              Reset filters
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col">
-            {[...sectionMap.entries()].map(([key, { meta, problems: sProblems }], idx) => (
-              <SectionGroup
-                key={key}
-                name={meta.name}
-                displayName={meta.display_name}
-                icon={meta.icon}
-                problems={sProblems}
-                // Open first section by default, or all if expandAll, or any with matches
-                defaultOpen={
-                  expandAll ||
-                  idx === 0 ||
-                  (!!search || !!difficulty || !!topic)
-                }
-              />
-            ))}
-          </div>
-        )}
+            {/* Filters */}
+            <FiltersBar
+              search={search}
+              difficulty={difficulty}
+              onSearch={setSearch}
+              onDifficulty={setDifficulty}
+              onReset={handleReset}
+              expandAll={expandAll === true}
+              onToggleExpand={handleToggleExpand}
+              hasFilters={!!(search || difficulty || topic || company)}
+            />
+
+            {/* Sections */}
+            {isLoading ? (
+              <div className="flex flex-col gap-1.5">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i}
+                    className="h-11 bg-[#0c0c0c] border border-[#191919] rounded-xl animate-pulse"
+                    style={{ opacity: 1 - i * 0.1 }}
+                  />
+                ))}
+              </div>
+            ) : sectionMap.size === 0 ? (
+              <div className="text-center py-16 border-2 border-dashed border-[#191919] rounded-2xl">
+                <p className="text-slate-600 text-sm">No problems match your filters.</p>
+                <button onClick={handleReset}
+                  className="mt-3 text-indigo-400 hover:text-indigo-300 text-xs hover:underline">
+                  Reset filters
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {[...sectionMap.entries()].map(([key, { meta, problems: sp }]) => (
+                  <SectionGroup
+                    key={key}
+                    name={meta.name}
+                    displayName={meta.display_name}
+                    icon={meta.icon}
+                    problems={sp}
+                    forceOpen={expandAll}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+
+          {/* ══ RIGHT: Calendar + streak ══ */}
+          <RightPanel
+            submissions={allHistory ?? []}
+            problems={allProblems}
+            currentStreak={user?.current_streak ?? 0}
+            bestStreak={(user as any)?.best_streak ?? 0}
+            todaySolved={todaySolved}
+          />
+
+        </div>
       </div>
     </div>
   );
